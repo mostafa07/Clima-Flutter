@@ -1,12 +1,29 @@
-import 'package:flutter/material.dart';
+import 'package:clima/screens/city_screen.dart';
+import 'package:clima/services/weather.dart';
 import 'package:clima/utilities/constants.dart';
+import 'package:flutter/material.dart';
 
 class LocationScreen extends StatefulWidget {
+  LocationScreen({this.locationWeather});
+
+  final locationWeather;
+
   @override
   _LocationScreenState createState() => _LocationScreenState();
 }
 
 class _LocationScreenState extends State<LocationScreen> {
+  int temperature;
+  String weatherIcon;
+  String message;
+  String cityName;
+
+  @override
+  void initState() {
+    super.initState();
+    updateUi(widget.locationWeather);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,14 +46,29 @@ class _LocationScreenState extends State<LocationScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
                   FlatButton(
-                    onPressed: () {},
+                    onPressed: () async {
+                      var locationWeatherData =
+                          await WeatherModel().getLocationWeather();
+                      updateUi(locationWeatherData);
+                    },
                     child: Icon(
                       Icons.near_me,
                       size: 50.0,
                     ),
                   ),
                   FlatButton(
-                    onPressed: () {},
+                    onPressed: () async {
+                      var typedName = await Navigator.push(context,
+                          MaterialPageRoute(builder: (context) {
+                        return CityScreen();
+                      }));
+
+                      if (typedName != null) {
+                        var cityWeatherData = await WeatherModel()
+                            .getCityWeather(typedName.toString());
+                        updateUi(cityWeatherData);
+                      }
+                    },
                     child: Icon(
                       Icons.location_city,
                       size: 50.0,
@@ -49,11 +81,11 @@ class _LocationScreenState extends State<LocationScreen> {
                 child: Row(
                   children: <Widget>[
                     Text(
-                      '32°',
+                      '$temperature °',
                       style: kTempTextStyle,
                     ),
                     Text(
-                      '☀️',
+                      weatherIcon,
                       style: kConditionTextStyle,
                     ),
                   ],
@@ -62,7 +94,7 @@ class _LocationScreenState extends State<LocationScreen> {
               Padding(
                 padding: EdgeInsets.only(right: 15.0),
                 child: Text(
-                  "It's 🍦 time in San Francisco!",
+                  '$message in $cityName!',
                   textAlign: TextAlign.right,
                   style: kMessageTextStyle,
                 ),
@@ -72,5 +104,24 @@ class _LocationScreenState extends State<LocationScreen> {
         ),
       ),
     );
+  }
+
+  void updateUi(dynamic locationWeatherJsonData) {
+    setState(() {
+      if (locationWeatherJsonData == null) {
+        temperature = 0;
+        weatherIcon = 'Error';
+        message = 'Unable to get weather data';
+        cityName = 'location';
+      } else {
+        temperature = locationWeatherJsonData['main']['temp'].round();
+        cityName = locationWeatherJsonData['name'];
+        int condition = locationWeatherJsonData['weather'][0]['id'];
+
+        final WeatherModel weatherModel = WeatherModel();
+        weatherIcon = weatherModel.getWeatherIcon(condition);
+        message = weatherModel.getMessage(temperature);
+      }
+    });
   }
 }
